@@ -72,10 +72,13 @@ PHASE 5: RESULT PRESENTATION
 
 # Clone and setup environment
 
-git clone <repository>
-cd ASSIGNMENT_1
-python -m venv rag_env
-source rag_env/bin/activate  # Windows: rag_env\Scripts\activate
+---git clone <repository>
+
+---cd ASSIGNMENT_1
+
+---python -m venv rag_env
+
+---source rag_env/bin/activate  # Windows: rag_env\Scripts\activate
 
 # Install dependencies
 
