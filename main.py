@@ -5,20 +5,15 @@ from governance_agent import GovernanceAgent
 from retriever import PolicyRetriever
 
 class GovernanceRAGSystem:
-    """
-    Main RAG system coordinating retrieval and governance evaluation
-    """
     def __init__(self):
         print("🧠 Initializing Governance RAG System...")
-        
-        # Initialize components
+
         self.retriever = PolicyRetriever("data/data_policy.txt")
         self.agent = GovernanceAgent()
         
         print("✅ System ready!\n")
     
     def parse_user_input(self):
-        """Parse user input with flexible format support"""
         print("=" * 60)
         print("Governance RAG System - Input")
         print("=" * 60)
@@ -31,30 +26,26 @@ class GovernanceRAGSystem:
         while True:
             try:
                 line = input().strip()
-                if line == "" and lines:  # Empty line after content
+                if line == "" and lines:
                     break
-                if line:  # Non-empty line
+                if line:
                     lines.append(line)
             except (EOFError, KeyboardInterrupt):
                 break
         
         user_input = "\n".join(lines)
-        
-        # Try JSON parsing first
+
         try:
             data = json.loads(user_input)
             action = data.get("action", "").strip()
             context = data.get("context", "").strip()
         except json.JSONDecodeError:
-            # Fallback: simple text parsing
             if "[" in user_input and "]" in user_input:
-                # Format: Action [Context]
                 action_part = user_input.split("[")[0].strip()
                 context_match = re.search(r"\[(.*?)\]", user_input)
                 context = context_match.group(1) if context_match else ""
                 action = action_part
             else:
-                # Just action, no context
                 action = user_input
                 context = ""
         
@@ -70,7 +61,6 @@ class GovernanceRAGSystem:
         if context:
             print(f"📋 Context: {context}")
         
-        # Step 1: Retrieve relevant policies
         print("\n📚 Retrieving relevant policy clauses...")
         retrieved_clauses = self.retriever.retrieve(action, k=4)
         
@@ -78,19 +68,16 @@ class GovernanceRAGSystem:
             print("❌ No relevant policies found")
             return None
         
-        # Display retrieved clauses with scores
         print("\n📖 Retrieved Policy Clauses:")
         for i, clause in enumerate(retrieved_clauses, 1):
             print(f"  {i}. [{clause['reference']}] Score: {clause['score']:.3f}")
             print(f"     {clause['text'][:100]}...")
         
-        # Prepare clauses for agent
         clauses_text = "\n".join([
             f"- {clause['reference']}: {clause['text']}" 
             for clause in retrieved_clauses
         ])
         
-        # Step 2: Governance evaluation
         print("\n⚖️ Consulting governance agent...")
         decision = self.agent.evaluate_action(action, context, clauses_text)
         
@@ -106,11 +93,9 @@ class GovernanceRAGSystem:
                     print("👋 Exiting...")
                     break
                 
-                # Process the query
                 decision = self.process_query(action, context)
                 
                 if decision:
-                    # Display results in exact JSON format
                     print("\n" + "=" * 60)
                     print("✅ FINAL GOVERNANCE DECISION (JSON):")
                     print("=" * 60)
