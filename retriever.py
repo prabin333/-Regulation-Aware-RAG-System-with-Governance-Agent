@@ -5,9 +5,6 @@ import faiss
 import numpy as np
 
 class PolicyRetriever:
-    """
-    Efficient policy document retriever using FAISS with fine-grained chunking
-    """
     def __init__(self, file_path="data/data_policy.txt"):
         self.file_path = file_path
         self.documents = []
@@ -17,15 +14,9 @@ class PolicyRetriever:
         self._initialize_retriever()
     
     def _initialize_retriever(self):
-        """Initialize the retriever with documents and index"""
         try:
-            # Load embedding model
             self.model = SentenceTransformer('all-MiniLM-L6-v2')
-            
-            # Load and process documents
             self._load_documents()
-            
-            # Build FAISS index
             self._build_index()
             
             print(f"✅ Policy Retriever initialized with {len(self.documents)} fine-grained policy clauses!")
@@ -41,22 +32,19 @@ class PolicyRetriever:
         
         with open(self.file_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        
-        # Remove header and split into sections
+
         sections = re.split(r'Section \d+:', content)
         if len(sections) > 1:
-            sections = sections[1:]  # Remove content before first section
+            sections = sections[1:]
         
         for section_idx, section in enumerate(sections, 1):
             if section.strip():
-                # Extract individual policy points (1.1, 1.2, 2.1, etc.)
                 policy_points = re.findall(r'(\d+\.\d+\.[^\.]+\.)', section)
                 
                 if not policy_points:
-                    # Fallback: split by sentences for sections without numbered points
                     sentences = re.split(r'(?<=[.!?])\s+', section)
                     for sentence in sentences:
-                        if len(sentence.strip()) > 20:  # Only meaningful sentences
+                        if len(sentence.strip()) > 20:
                             self.documents.append({
                                 'text': sentence.strip(),
                                 'reference': f"Section {section_idx}",
@@ -72,7 +60,6 @@ class PolicyRetriever:
                                 'type': 'policy_point'
                             })
         
-        # If still no documents, fallback to line-based splitting
         if not self.documents:
             print("⚠️ Using fallback line-based chunking")
             with open(self.file_path, 'r', encoding='utf-8') as f:
@@ -84,13 +71,11 @@ class PolicyRetriever:
                 if not line:
                     continue
                 
-                # Detect section headers
                 section_match = re.match(r'Section \d+[:\.]\s*(.+)', line)
                 if section_match:
                     current_section = section_match.group(1)
                     continue
                 
-                # Only add meaningful lines (not too short, not headers)
                 if len(line) > 30 and not line.isupper():
                     self.documents.append({
                         'text': line,
@@ -103,15 +88,12 @@ class PolicyRetriever:
         if not self.documents:
             raise ValueError("No documents to index")
         
-        # Generate embeddings
         texts = [doc['text'] for doc in self.documents]
         embeddings = self.model.encode(texts, normalize_embeddings=True)
         
-        # Store embeddings in documents
         for i, doc in enumerate(self.documents):
             doc['embedding'] = embeddings[i]
         
-        # Create FAISS index
         dimension = embeddings.shape[1]
         self.index = faiss.IndexFlatIP(dimension)
         self.index.add(embeddings.astype('float32'))
@@ -123,21 +105,18 @@ class PolicyRetriever:
         if self.index is None:
             raise RuntimeError("Index not built")
         
-        # Generate query embedding
         query_embedding = self.model.encode([query], normalize_embeddings=True)
         
-        # Search with more candidates initially
-        search_k = min(k * 3, len(self.documents))  # Get more candidates for diversity
+        search_k = min(k * 3, len(self.documents))
         scores, indices = self.index.search(query_embedding.astype('float32'), search_k)
         
         results = []
-        seen_texts = set()  # Avoid duplicates
+        seen_texts = set()
         
         for score, idx in zip(scores[0], indices[0]):
             if idx < len(self.documents):
                 doc = self.documents[idx]
                 
-                # Skip duplicates and very low similarity
                 if (doc['text'] not in seen_texts and score > 0.1):
                     seen_texts.add(doc['text'])
                     results.append({
@@ -147,14 +126,11 @@ class PolicyRetriever:
                         'type': doc.get('type', 'unknown')
                     })
                 
-                # Stop when we have enough unique results
                 if len(results) >= k:
                     break
         
-        # Sort by relevance score
         results.sort(key=lambda x: x['score'], reverse=True)
         
-        # FIXED: Proper f-string formatting
         score_list = [f"{r['score']:.3f}" for r in results]
         print(f"🔍 Retrieved {len(results)} relevant clauses for: '{query}'")
         print(f"   Similarity scores: {score_list}")
