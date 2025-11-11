@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large model files - EXCLUDE these
+model/*.safetensors
+model/*.bin
+*.pt
+*.pth
+*.pkl
+*.joblib
+*.gguf
+*.ggml
+*.h5
+
+# Data directories
+data/
+logs/
+*.index
