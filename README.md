@@ -72,7 +72,7 @@ PHASE 5: RESULT PRESENTATION
 
 # Clone and setup environment
 
----git clone <repository>
+---git clone repository
 
 ---cd ASSIGNMENT_1
 
