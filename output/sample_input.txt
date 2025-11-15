@@ -1,0 +1,21 @@
+1.
+
+{
+"action": "Store user data on an external analytics server.",
+"context": "The organization operates within strict data compliance
+policies."
+}
+
+2.
+
+{
+"action": "Migrate the database containing unencrypted user email addresses to a new service provider in the Asia-Pacific region.",
+"context": "This migration is necessary to save 20% on monthly hosting costs."
+}
+
+3.
+
+{
+"action": "Document and archive the logs detailing all data activities from the last 30 days to prepare for the quarterly compliance review.",
+"context": "This is an internal metadata aggregation task to ensure adherence to Section 5.1 and 5.3 of the Data Governance Policy."
+}
