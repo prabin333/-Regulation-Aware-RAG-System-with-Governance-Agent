@@ -4,3 +4,10 @@ accelerate
 sentence-transformers
 faiss-cpu
 numpy
+langchain
+langchain-core
+langchain-community
+langchain-text-splitters
+langgraph
+huggingface_hub
+pydantic
