@@ -172,21 +172,23 @@ Total decisions in memory: 1
 
 # 🚀 Running the Agent
 
+```
+CREATE ENV
+ACTIVATE IT
+
+```
+
 ## **1. Install Requirements**
 
 ```
 pip install -r requirements.txt
 ```
 
-## **2. Set model path (optional)**
-
-Default:
+## **2. Check model is available or not in model folder *
 
 ```
-F:/ASSIGNMENT_1/model
+If no model is present → download it.
 ```
-
-If no model is present → dummy LLM is used automatically.
 
 ## **3. Run**
 
