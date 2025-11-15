@@ -1,91 +1,252 @@
-# REGULATION-AWARE RAG SYSTEM WITH GOVERNANCE AGENT
+# 📘 Regulation-Aware RAG System with Governance Agent (with Memory)
 
-This project implements a Regulation-Aware Retrieval-Augmented Generation (RAG) System integrated with a Governance Agent.
-Its objective is to automatically evaluate a proposed action against a set of policy or regulatory documents, determine its compliance status, provide a clear rationale referencing specific policies, and suggest necessary changes for alignment.
+This project implements a **Regulation-Aware Retrieval-Augmented Generation (RAG) System** combined with a **Compliance Governance Agent** using Langchain and LangGraph.
+It evaluates whether a proposed **ACTION** complies with an organization’s **policies**, explains the reasoning, and suggests changes if necessary.
 
-## FEATURES
+The system also includes an **AI Memory Module**, enabling context-aware decisions based on past actions.
 
-1. Policy Ingestion & Indexing
+# ✨ Key Features
 
-   - Automatically loads a policy document.
-   - Chunks it into fine-grained clauses.
-   - Creates a high-efficiency FAISS index for semantic search.
+### 🔍 **1. Policy Retrieval (RAG)**
 
-2. Semantic Retrieval (RAG Component)
+* Loads policy documents
+* Splits into chunks
+* Embeds using `sentence-transformers/all-MiniLM-L6-v2`
+* Builds or loads FAISS index
+* Retrieves top-k relevant policy sections
 
-   - Uses a pre-trained SentenceTransformer model to perform semantic search.
-   - Retrieves the most relevant policy clauses for a given user query.
+### 🧠 **2. Governance Evaluation**
 
-3. Governance Decision Making
+* Evaluates ACTION + CONTEXT using:
 
-   - Employs a Gemma-2-2B language model as the Governance Agent.
-   - Uses a structured prompt to generate a compliance decision:
-     Allowed, Not Allowed, or Needs Review.
+  * Retrieved policies
+  * Past decisions (memory)
+    
+* Enforces strict JSON schema:
 
-4. Structured Output
+```
+{
+  "decision": "Allowed | Not Allowed | Needs Review",
+  "reason": "...",
+  "suggested_changes": ["..."],
+  "references": ["Policy Name Section X.Y"]
+}
+```
 
-   - Enforces a strict JSON output format for the agent's decision.
-   - Ensures consistency in the decision, reasoning, suggested changes, and policy references.
+### 💾 **3. Memory Module**
 
-5. Interactive Workflow
+Stores:
 
-   - Runs in an interactive loop.
-   - Allows continuous evaluation of different proposed actions.
+* Action
+* Context
+* Final LLM decision
+  And feeds past 8 decisions back into the LLM.
 
-## WORKFLOW EXECUTION (STEP-BY-STEP)
+### 🏗️ **4. LangGraph Workflow**
 
-PHASE 1: SYSTEM INITIALIZATION
+```
+┌──────────┐     ┌────────────┐     ┌─────────┐
+│ RETRIEVE │ →→  │  EVALUATE  │ →→  │ MEMORY │ →→ END
+└──────────┘     └────────────┘     └─────────┘
+```
 
-- Load the SentenceTransformer model and policy document.
-- Chunk the document and generate embeddings.
-- Build the FAISS index.
-- Load the Gemma-2-2B model and tokenizer.
+### 🤖 **5. Full Local LLM Support**
 
-PHASE 2: USER INPUT PROCESSING
+* Loads any HuggingFace causal LM
+* If loading fails → uses **dummy fallback LLM** with JSON output
+* Ensures uninterrupted workflow
 
-- User submits a proposed action, for example:
-  {"action": "Share customer emails with third-party marketing",
-  "context": "New product launch campaign"}
-- The system parses and extracts the ACTION and CONTEXT.
+---
 
-PHASE 3: POLICY RETRIEVAL (RAG COMPONENT)
+# 📂 Project File Structure
 
-- A query embedding is generated for the combined user input.
-- A semantic search is performed on the FAISS index.
-- The top-k relevant policy clauses are retrieved, scored, and formatted.
+```
+ASSIGNMENT_1/
+│
+├── data/
+│   ├── data_policy.txt             # Policy document used for RAG
+│   ├── fais_index_policy/          # Auto-generated FAISS index
+│  
+│── fais_index_policy/              # Auto-generated FAISS index
+├── memory/
+│   ├── memory_node.py              # Memory archiving node
+│   └── state.py                    # AgentState Pydantic model
+│
+├── model/                          # Local model
+│
+├── output/
+│   ├── sample1_output/
+│   ├── sample2_output/
+│   └── sample_input.txt
+│
+├── retriever.py                    # PolicyRetriever + LangGraph RAG node
+├── governance_agent.py             # EvaluateActionNode (LLM evaluator)
+├── graph.py                        # LangGraph workflow builder
+├── main.py                         # CLI runner for the workflow
+│
+├── requirements.txt
+├── README.md   
+└── .gitignore
+```
 
-PHASE 4: GOVERNANCE DECISION MAKING
+---
 
-- A structured prompt is created, incorporating the user action, context, and retrieved clauses.
-- The Gemma-2-2B agent generates a response.
-- The system extracts and validates the structured JSON output.
+# ⚙️ How the System Works (Step-by-Step)
 
-PHASE 5: RESULT PRESENTATION
+## **Step 1 — RETRIEVE**
 
-- Retrieved policy clauses (with text and scores) are displayed.
-- The final structured decision from the Governance Agent is shown, highlighting:
-  Decision, Reason, and Suggested Changes.
+`PolicyRetrieverNode.run()`
 
-## QUICK START & INSTALLATION
+* Builds/loads FAISS index
+* Retrieves the most relevant policy chunks
+* Adds them to `state.retrieved_policies`
 
-**1. Installation Steps**
+Logs:
 
-# Clone and setup environment
+```
+🔍 Step 1: RETRIEVE - Searching for relevant policies...
+Success: Retrieved 4 policy document(s).
+```
 
----git clone repository
+---
 
----cd ASSIGNMENT_1
+## **Step 2 — EVALUATE**
 
----python -m venv rag_env
+`EvaluateActionNode.run()`
 
----source rag_env/bin/activate  # Windows: rag_env\Scripts\activate
+* Prepares the final prompt:
 
-# Install dependencies
+  * ACTION
+  * CONTEXT
+  * RETRIEVED POLICIES
+  * PAST DECISIONS (memory)
+  * JSON schema instructions
+* Sends prompt to the LLM
+* Parses output using `PydanticOutputParser`
 
+Logs:
+
+```
+🧠 Step 2: EVALUATE - Running LLM for decision...
+LLM Output Received (raw): { "decision": "Not Allowed", ... }
+Decision: 'Not Allowed'
+```
+
+---
+
+## **Step 3 — MEMORY**
+
+`memory_node()`
+Stores:
+
+```json
+{
+  "action": "...",
+  "context": "...",
+  "result": {...}
+}
+```
+
+Logs:
+
+```
+💾 Step 3: MEMORY - Archiving current decision...
+Action 'Store user data...' archived.
+Total decisions in memory: 1
+```
+
+## **Step 4 — OUTPUT**
+
+`main.py` prints a clean JSON output:
+
+```
+===== GOVERNANCE DECISION (Clean Output) =====
+{
+  "decision": "Not Allowed",
+  "reason": "...",
+  "suggested_changes": [...],
+  "references": [...]
+}
+=============================================
+```
+
+# 🚀 Running the Agent
+
+## **1. Install Requirements**
+
+```
 pip install -r requirements.txt
+```
 
-# Ensure model files are in ./model/ directory
+## **2. Set model path (optional)**
 
-# Run the main.py file
+Default:
 
+```
+F:/ASSIGNMENT_1/model
+```
+
+If no model is present → dummy LLM is used automatically.
+
+## **3. Run**
+
+```
 python main.py
+```
+
+# 📝 Input Format
+
+You can enter:
+
+### **Option 1: Raw JSON**
+
+```
+{
+  "action": "Store user data on an analytics server",
+  "context": "The team wants fast reporting"
+}
+```
+
+Press enter twice to submit.
+
+### **Option 2: Plain Action Text**
+
+
+# 🧾 Sample Output
+
+```
+{
+  "decision": "Not Allowed",
+  "reason": "Storing user data on an external analytics server violates Data Storage Policy Section 1.1.",
+  "suggested_changes": [
+    "Obtain explicit approval from the Data Protection Officer.",
+    "Encrypt user data before transmission."
+  ],
+  "references": [
+    "Data Storage Policy Section 1.1"
+  ]
+}
+```
+
+# 🧠 Memory Example
+
+After multiple queries:
+
+```
+PAST DECISIONS:
+Past 1: action='Store data Externally...' | decision=Not Allowed
+Past 2: action='Share logs...' | decision=Needs Review
+...
+```
+
+The LLM now sees **historical behavior**, enabling more consistent governance decisions.
+
+# 🛠️ Developer Notes
+
+### 🔧 **FAISS index rebuilds automatically**
+
+* When `data_policy.txt` is modified
+* When index folder missing
+* When timestamp mismatch detected
+
+### 🧹 **Output is always clean JSON**
